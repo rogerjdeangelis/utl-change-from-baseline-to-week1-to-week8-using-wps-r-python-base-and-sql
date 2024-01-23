@@ -1,2 +1,687 @@
 # utl-change-from-baseline-to-week1-to-week8-using-wps-r-python-base-and-sql
 Change from baseline to week1 to week8 wps r python base and sql 
+    %let pgm=utl-change-from-baseline-to-week1-to-week8-using-wps-r-python-base-and-sql;
+
+    Change from baseline to week1 to week8 wps r python base and sql
+
+    github
+    http://tinyurl.com/4cerjba9
+    https://github.com/rogerjdeangelis/utl-change-from-baseline-to-week1-to-week8-using-wps-r-python-base-and-sql
+
+    Could not figure out how to use R do.call/apply, Python apply/lamda or python loops.
+    The issue seems to be creating 8 new differnece variables.
+    However they are all probly slower, compilers.interpreters love repetitive code.
+
+    SOLUTIONS
+
+      1 wps r (fastest? depends on the compiler/interpreter)
+      2 wps python (fastest?)
+      3 wps sql
+      4 wps r sql
+      5 wps python sql
+      6 wps r loops
+      7 wps r matrix mix
+
+
+    PROBLEM
+
+     /**************************************************************************************************************************/
+     /*                             |                                                        |                                 */
+     /*         INPUT               |        PROCESS                                         |          OUTPUT                 */
+     /*         =====               |        =======                                         |          ======                 */
+     /*  SD1.HAVE total obs=5       |      7 SOLUTIONS (can also use nacro generated code)   |  Differences from baseline(ns)  */
+     /*                             |                                                        |                                 */
+     /*  BS W1 W2 W3 W4 W5 W6 W7 W8 |   WPS datastep                                         |  D1  D2  D3  D4  D5  D6  D7  D8 */
+     /*                             |   ============                                         |                                 */
+     /*  11 62 45 65 73 93 83 21 43 |   array weeks[8] w1-w8;                                |  51  34  54  62  82  72  10  32 */
+     /*  54 56 37 82 13 73 29 40 98 |   array difweks[8] d1-d8;                              |   2 -17  28 -41  19 -25 -14  44 */
+     /*  85 20 35 59 16 18 77 65 51 |   do idx=1 to dim(difWeks);                            | -65 -50 -26 -69 -67  -8 -20 -34 */
+     /*  44 79 69 31 41 80 80 40 44 |      difWeks[idx]=weeks[idx]-bs;                       |  35  25 -13  -3  36  36  -4   0 */
+     /*  15 54 42 38 42 37 42 48 63 |   end;                                                 |  39  27  23  27  22  27  33  48 */
+     /*                             |                                                        |                                 */
+     /*                             |  WPS Python Base fastest                               |                                 */
+     /*                             |  =======================                               |                                 */
+     /*                             |  %array(_ws,values=1-8);                               |                                 */
+     /*                             |  %do_over(_ws,phrase=%str(                             |                                 */
+     /*                             |    have['D?'] = have['W?']-have['BS'];));              |                                 */
+     /*                             |                                                        |                                 */
+     /*                             |  WPS R fastest  fastest                                |                                 */
+     /*                             |  =======================                               |                                 */
+     /*                             |  %do_over(_ws,phrase=%str(                             |                                 */
+     /*                             |    have$D?<-have$W? - have$BS;))                       |                                 */
+     /*                             |                                                        |                                 */
+     /*                             |  WPS r python sql                                      |                                 */
+     /*                             |  ================                                      |                                 */
+     /*                             |  select                                                |                                 */
+     /*                             |      bs                                                |                                 */
+     /*                             |      %do_over(_ws,phrase=%str(                         |                                 */
+     /*                             |       ,w?                                              |                                 */
+     /*                             |       ,bs-w? as D?))                                   |                                 */
+     /*                             |  from                                                  |                                 */
+     /*                             |      sd1.have                                          |                                 */
+     /*                             |                                                        |                                 */
+     /**************************************************************************************************************************/
+
+    /*                   _
+    (_)_ __  _ __  _   _| |_
+    | | `_ \| `_ \| | | | __|
+    | | | | | |_) | |_| | |_
+    |_|_| |_| .__/ \__,_|\__|
+            |_|
+    */
+
+    options validvarname=upcase;
+    libname sd1 "d:/sd1";
+    data sd1.have;
+      retain bs;
+      array weeks[8] w1-w8;
+      do id=1 to 5;
+         bs=int(90*uniform(5731)) +10;
+         do idx=1 to 8;
+           weeks[idx]=int(90*uniform(5731)) +10;
+         end;
+         output;
+      end;
+      drop id idx;
+    run;quit;
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /* SD1.HAVE total obs=5                                                                                                   */
+    /*                                                                                                                        */
+    /* Obs    BS    W1    W2    W3    W4    W5    W6    W7    W8                                                              */
+    /*                                                                                                                        */
+    /*  1     11    62    45    65    73    93    83    21    43                                                              */
+    /*  2     54    56    37    82    13    73    29    40    98                                                              */
+    /*  3     85    20    35    59    16    18    77    65    51                                                              */
+    /*  4     44    79    69    31    41    80    80    40    44                                                              */
+    /*  5     15    54    42    38    42    37    42    48    63                                                              */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*                                __           _            _
+    / | __      ___ __  ___   _ __   / _| __ _ ___| |_ ___  ___| |_
+    | | \ \ /\ / / `_ \/ __| | `__| | |_ / _` / __| __/ _ \/ __| __|
+    | |  \ V  V /| |_) \__ \ | |    |  _| (_| \__ \ ||  __/\__ \ |_
+    |_|   \_/\_/ | .__/|___/ |_|    |_|  \__,_|___/\__\___||___/\__|
+                 |_|
+    */
+    /*----                                                                   ----*/
+    /*---- WITHOUT MACRO ARRAYS                                              ----*/
+    /*----                                                                   ----*/
+
+    proc datasets lib=sd1 nolist nodetails;delete want; run;quit;
+
+    %utl_submit_wps64x("
+    libname sd1 'd:/sd1';
+    proc r;
+    export data=sd1.have r=have;
+    submit;
+    have$D1<-have$W1 - have$BS;
+    have$D2<-have$W2 - have$BS;
+    have$D3<-have$W3 - have$BS;
+    have$D4<-have$W4 - have$BS;
+    have$D5<-have$W5 - have$BS;
+    have$D6<-have$W6 - have$BS;
+    have$D7<-have$W7 - have$BS;
+    have$D8<-have$W8 - have$BS;
+    have;
+    endsubmit;
+    import data=sd1.want r=have;
+    ");
+
+    /*----                                                                   ----*/
+    /*---- USING MACRO ARRAYS                                                ----*/
+    /*----                                                                   ----*/
+
+    proc datasets lib=sd1 nolist nodetails;delete want; run;quit;
+
+    %utl_submit_wps64x("
+    libname sd1 'd:/sd1';
+    %array(_ws,values=1-8);
+    proc r;
+    export data=sd1.have r=have;
+    submit;
+    %do_over(_ws,phrase=%str(
+      have$D?<-have$W? - have$BS;))
+    have;
+    endsubmit;
+    import data=sd1.want r=have;
+    proc print data=sd1.want;
+    run;quit;
+    ");
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /*  The WPS R System                                                                                                      */
+    /*                                                                                                                        */
+    /*    BS W1 W2 W3 W4 W5 W6 W7 W8  D1  D2  D3  D4  D5  D6  D7  D8                                                          */
+    /*  1 11 62 45 65 73 93 83 21 43  51  34  54  62  82  72  10  32                                                          */
+    /*  2 54 56 37 82 13 73 29 40 98   2 -17  28 -41  19 -25 -14  44                                                          */
+    /*  3 85 20 35 59 16 18 77 65 51 -65 -50 -26 -69 -67  -8 -20 -34                                                          */
+    /*  4 44 79 69 31 41 80 80 40 44  35  25 -13  -3  36  36  -4   0                                                          */
+    /*  5 15 54 42 38 42 37 42 48 63  39  27  23  27  22  27  33  48                                                          */
+    /*                                                                                                                        */
+    /* The WPS System                                                                                                         */
+    /*                                                                                                                        */
+    /* Obs    BS    W1    W2    W3    W4    W5    W6    W7    W8    D1     D2     D3     D4     D5     D6     D7     D8       */
+    /*                                                                                                                        */
+    /*  1     11    62    45    65    73    93    83    21    43     51     34     54     62     82     72     10     32      */
+    /*  2     54    56    37    82    13    73    29    40    98      2    -17     28    -41     19    -25    -14     44      */
+    /*  3     85    20    35    59    16    18    77    65    51    -65    -50    -26    -69    -67     -8    -20    -34      */
+    /*  4     44    79    69    31    41    80    80    40    44     35     25    -13     -3     36     36     -4      0      */
+    /*  5     15    54    42    38    42    37    42    48    63     39     27     23     27     22     27     33     48      */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*___                                     _   _                   __           _            _
+    |___ \  __      ___ __  ___   _ __  _   _| |_| |__   ___  _ __   / _| __ _ ___| |_ ___  ___| |_
+      __) | \ \ /\ / / `_ \/ __| | `_ \| | | | __| `_ \ / _ \| `_ \ | |_ / _` / __| __/ _ \/ __| __|
+     / __/   \ V  V /| |_) \__ \ | |_) | |_| | |_| | | | (_) | | | ||  _| (_| \__ \ ||  __/\__ \ |_
+    |_____|   \_/\_/ | .__/|___/ | .__/ \__, |\__|_| |_|\___/|_| |_||_|  \__,_|___/\__\___||___/\__|
+                     |_|         |_|    |___/
+    */
+
+    %utlfkil(d:/xpt/want.xpt);
+
+    /*----                                                                   ----*/
+    /*----  elimiate issues with datastep and view with the same name        ----*/
+    /*----                                                                   ----*/
+
+    proc datasets lib=sd1 nolist mt=data mt=view nodetails;delete want; run;quit;
+    proc datasets lib=work nolist mt=data mt=view nodetails;delete want want_py_long_names; run;quit;
+
+    %utl_submit_wps64x("
+    options validvarname=any lrecl=32756;
+    libname sd1 'd:/sd1';
+    proc python;
+    export data=sd1.have  python=have;
+    submit;
+    import pyreadstat as ps;
+    from os import path;
+    import pandas as pd;
+    import numpy as np;
+    from pandasql import sqldf;
+    mysql = lambda q: sqldf(q, globals());
+    from pandasql import PandaSQL;
+    pdsql = PandaSQL(persist=True);
+    sqlite3conn = next(pdsql.conn.gen).connection.connection;
+    sqlite3conn.enable_load_extension(True);
+    sqlite3conn.load_extension('c:/temp/libsqlitefunctions.dll');
+    mysql = lambda q: sqldf(q, globals());
+    %arraydelete(_ws);
+    %array(_ws,values=1-8);
+    %do_over(_ws,phrase=%str(
+      have['D?'] = have['W?']-have['BS'];));
+    want=have;
+    print(want);
+     ps.write_xport(want,'d:\\xpt\\want.xpt',table_name='want',file_format_version=5
+     ,column_labels=['BS','W1','W2','W3','W4','W5','W5','W7','W8','D1','D2','D3','D4','D5','D5','D7','D8']);
+    endsubmit;
+    ");
+
+    /*--- handles long variable names by using the label to rename the variables  ----*/
+
+    libname xpt xport "d:/xpt/want.xpt";
+    proc contents data=xpt._all_;
+    run;quit;
+
+    data want_py_long_names;
+      %utl_rens(xpt.want) ;
+      set want;
+    run;quit;
+    libname xpt clear;
+
+    proc print data=want_py_long_names;
+    run;quit;
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /*  The WPS PYTHON Procedure                                                                                              */
+    /*                                                                                                                        */
+    /*       BS    W1    W2    W3    W4    W5  ...    D3    D4    D5    D6    D7    D8                                        */
+    /*  0  11.0  62.0  45.0  65.0  73.0  93.0  ...  54.0  62.0  82.0  72.0  10.0  32.0                                        */
+    /*  1  54.0  56.0  37.0  82.0  13.0  73.0  ...  28.0 -41.0  19.0 -25.0 -14.0  44.0                                        */
+    /*  2  85.0  20.0  35.0  59.0  16.0  18.0  ... -26.0 -69.0 -67.0  -8.0 -20.0 -34.0                                        */
+    /*  3  44.0  79.0  69.0  31.0  41.0  80.0  ... -13.0  -3.0  36.0  36.0  -4.0   0.0                                        */
+    /*  4  15.0  54.0  42.0  38.0  42.0  37.0  ...  23.0  27.0  22.0  27.0  33.0  48.0                                        */
+    /*                                                                                                                        */
+    /*  WPS System                                                                                                            */
+    /*                                                                                                                        */
+    /*   BS    W1    W2    W3    W4    W5    W7    W8     D1     D2     D3     D4     D5     D7     D8                        */
+    /*                                                                                                                        */
+    /*   11    62    45    65    73    83    21    43     51     34     54     62     72     10     32                        */
+    /*   54    56    37    82    13    29    40    98      2    -17     28    -41    -25    -14     44                        */
+    /*   85    20    35    59    16    77    65    51    -65    -50    -26    -69     -8    -20    -34                        */
+    /*   44    79    69    31    41    80    40    44     35     25    -13     -3     36     -4      0                        */
+    /*   15    54    42    38    42    42    48    63     39     27     23     27     27     33     48                        */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*____                                  _
+    |___ /  __      ___ __  ___   ___  __ _| |
+      |_ \  \ \ /\ / / `_ \/ __| / __|/ _` | |
+     ___) |  \ V  V /| |_) \__ \ \__ \ (_| | |
+    |____/    \_/\_/ | .__/|___/ |___/\__, |_|
+                     |_|                 |_|
+    */
+    %arraydelete(_ws);
+    %utl_submit_wps64x("
+      libname sd1 sas7bdat 'd:/sd1';
+      options validvarname=any;
+      %arraydelete(_ws);
+      %array(_ws,values=1-8);
+      proc sql;
+        create
+           table sd1.want as
+        select
+            bs
+            %do_over(_ws,phrase=%str(
+             ,w?
+             ,bs-w? as D?))
+        from
+            sd1.have
+      ;quit;
+      proc print;
+      run;quit;
+    ");
+
+    /*----                                                                   ----*/
+    /*---- IF YOU WANT THE GENERATED CODE                                    ----*/
+    /*----                                                                   ----*/
+
+    %array(_ws,values=1-8);
+    data _null_;
+      %do_over(_ws,phrase=%str(putlog ",w?" ",bs-w? as D?" ;));
+    run;quit;
+
+    ,w1,bs-w1 as D1
+    ,w2,bs-w2 as D2
+    ,w3,bs-w3 as D3
+    ,w4,bs-w4 as D4
+    ,w5,bs-w5 as D5
+    ,w6,bs-w6 as D6
+    ,w7,bs-w7 as D7
+    ,w8,bs-w8 as D8
+
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /* The WPS System  (NOTE WEEK and DIFFERENCE ALTERNATE)                                                                   */
+    /*                                                                                                                        */
+    /* Obs  BS   W1    D1     W2    D2     W3    D3     W4    D4     W5    D5     W6    D6     W7    D7     W8    D8          */
+    /*                                                                                                                        */
+    /*  1   11   62    -51    45    -34    65    -54    73    -62    93    -82    83    -72    21    -10    43    -32         */
+    /*  2   54   56     -2    37     17    82    -28    13     41    73    -19    29     25    40     14    98    -44         */
+    /*  3   85   20     65    35     50    59     26    16     69    18     67    77      8    65     20    51     34         */
+    /*  4   44   79    -35    69    -25    31     13    41      3    80    -36    80    -36    40      4    44      0         */
+    /*  5   15   54    -39    42    -27    38    -23    42    -27    37    -22    42    -27    48    -33    63    -48         */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*  _                                           _
+    | || |   __      ___ __  ___   _ __   ___  __ _| |
+    | || |_  \ \ /\ / / `_ \/ __| | `__| / __|/ _` | |
+    |__   _|  \ V  V /| |_) \__ \ | |    \__ \ (_| | |
+       |_|     \_/\_/ | .__/|___/ |_|    |___/\__, |_|
+                      |_|                        |_|
+    */
+
+    proc datasets lib=sd1 nolist nodetails;delete want; run;quit;
+
+    %utl_submit_wps64x("
+    libname sd1 'd:/sd1';
+    %arraydelete(_ws);
+    %array(_ws,values=1-8);
+    proc r;
+    export data=sd1.have r=have;
+    submit;
+    library(sqldf);
+    want<-sqldf('
+        select
+            bs
+            %do_over(_ws,phrase=%str(
+             ,w?
+             ,bs-w? as D?))
+        from
+            have
+    ');
+    want;
+    endsubmit;
+    import data=sd1.want r=want;
+    run;quit;
+    ");
+
+    proc print data=sd1.want width=min;
+    run;quit;
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /*  The WPS R System                                                                                                      */
+    /*                                                                                                                        */
+    /*    W1  D1 W2  D2 W3  D3 W4  D4 W5  D5 W6  D6 W7  D7 W8  D8                                                             */
+    /*  1 62 -51 45 -34 65 -54 73 -62 93 -82 83 -72 21 -10 43 -32                                                             */
+    /*  2 56  -2 37  17 82 -28 13  41 73 -19 29  25 40  14 98 -44                                                             */
+    /*  3 20  65 35  50 59  26 16  69 18  67 77   8 65  20 51  34                                                             */
+    /*  4 79 -35 69 -25 31  13 41   3 80 -36 80 -36 40   4 44   0                                                             */
+    /*  5 54 -39 42 -27 38 -23 42 -27 37 -22 42 -27 48 -33 63 -48                                                             */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*___                                     _   _                             _
+    | ___|  __      ___ __  ___   _ __  _   _| |_| |__   ___  _ __    ___  __ _| |
+    |___ \  \ \ /\ / / `_ \/ __| | `_ \| | | | __| `_ \ / _ \| `_ \  / __|/ _` | |
+     ___) |  \ V  V /| |_) \__ \ | |_) | |_| | |_| | | | (_) | | | | \__ \ (_| | |
+    |____/    \_/\_/ | .__/|___/ | .__/ \__, |\__|_| |_|\___/|_| |_| |___/\__, |_|
+                     |_|         |_|    |___/                                |_|
+    */
+
+    %utlfkil(d:/xpt/want.xpt);
+
+    /*----                                                                   ----*/
+    /*----  elimiate issues with datastep and view with the same name        ----*/
+    /*----                                                                   ----*/
+
+    proc datasets lib=sd1 nolist mt=data mt=view nodetails;delete want; run;quit;
+    proc datasets lib=work nolist mt=data mt=view nodetails;delete want want_py_long_names; run;quit;
+
+    %utl_submit_wps64x("
+    options validvarname=any lrecl=32756;
+    libname sd1 'd:/sd1';
+    proc python;
+    export data=sd1.have  python=have;
+    submit;
+    %arraydelete(_ws);
+    %array(_ws,values=1-8);
+    import pyreadstat as ps;
+    from os import path;
+    import pandas as pd;
+    import numpy as np;
+    from pandasql import sqldf;
+    mysql = lambda q: sqldf(q, globals());
+    from pandasql import PandaSQL;
+    pdsql = PandaSQL(persist=True);
+    sqlite3conn = next(pdsql.conn.gen).connection.connection;
+    sqlite3conn.enable_load_extension(True);
+    sqlite3conn.load_extension('c:/temp/libsqlitefunctions.dll');
+    mysql = lambda q: sqldf(q, globals());
+    want = pdsql('''
+        select
+            bs
+            %do_over(_ws,phrase=%str(
+             ,w?
+             ,bs-w? as D?))
+        from
+            have
+    ''');
+     print(want);
+     ps.write_xport(want,'d:\\xpt\\want.xpt',table_name='want',file_format_version=5
+     ,column_labels=['BS','W1','D1','W2','D2','W3','D3','W4','D4','W5','D5','W6','D6','W7','D7','W8','D8']);
+    endsubmit;
+    ");
+
+    /*--- handles long variable names by using the label to rename the variables  ----*/
+
+    libname xpt xport "d:/xpt/want.xpt";
+    proc contents data=xpt._all_;
+    run;quit;
+
+    data want_py_long_names;
+      %utl_rens(xpt.want) ;
+      set want;
+    run;quit;
+    libname xpt clear;
+
+    proc print data=want_py_long_names;
+    run;quit;
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /* The WPS Python System                                                                                                  */
+    /*                                                                                                                        */
+    /* The PYTHON Procedure                                                                                                   */
+    /*                                                                                                                        */
+    /*      BS    W1    D1    W2    D2    W3  ...    W6    D6    W7    D7    W8    D8                                         */
+    /* 0  11.0  62.0 -51.0  45.0 -34.0  65.0  ...  83.0 -72.0  21.0 -10.0  43.0 -32.0                                         */
+    /* 1  54.0  56.0  -2.0  37.0  17.0  82.0  ...  29.0  25.0  40.0  14.0  98.0 -44.0                                         */
+    /* 2  85.0  20.0  65.0  35.0  50.0  59.0  ...  77.0   8.0  65.0  20.0  51.0  34.0                                         */
+    /* 3  44.0  79.0 -35.0  69.0 -25.0  31.0  ...  80.0 -36.0  40.0   4.0  44.0   0.0                                         */
+    /* 4  15.0  54.0 -39.0  42.0 -27.0  38.0  ...  42.0 -27.0  48.0 -33.0  63.0 -48.0                                         */
+    /*                                                                                                                        */
+    /* The WPS System                                                                                                         */
+    /*                                                                                                                        */
+    /* Obs    BS    W1     D1    W2     D2    W3     D3    W4     D4    W5     D5    W6     D6    W7     D7    W8     D8      */
+    /*                                                                                                                        */
+    /*  1     11    62    -51    45    -34    65    -54    73    -62    93    -82    83    -72    21    -10    43    -32      */
+    /*  2     54    56     -2    37     17    82    -28    13     41    73    -19    29     25    40     14    98    -44      */
+    /*  3     85    20     65    35     50    59     26    16     69    18     67    77      8    65     20    51     34      */
+    /*  4     44    79    -35    69    -25    31     13    41      3    80    -36    80    -36    40      4    44      0      */
+    /*  5     15    54    -39    42    -27    38    -23    42    -27    37    -22    42    -27    48    -33    63    -48      */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*__                                 _
+     / /_   __      ___ __  ___   _ __  | | ___   ___  _ __  ___
+    | `_ \  \ \ /\ / / `_ \/ __| | `__| | |/ _ \ / _ \| `_ \/ __|
+    | (_) |  \ V  V /| |_) \__ \ | |    | | (_) | (_) | |_) \__ \
+     \___/    \_/\_/ | .__/|___/ |_|    |_|\___/ \___/| .__/|___/
+                     |_|                              |_|
+    */
+    /*----                                                                   ----*/
+    /*---- WITHOUT MACRO ARRAYS                                              ----*/
+    /*----                                                                   ----*/
+
+    proc datasets lib=sd1 nolist nodetails;delete want; run;quit;
+
+    %utl_submit_wps64x("
+    libname sd1 'd:/sd1';
+    proc r;
+    export data=sd1.have r=have;
+    submit;
+    have$D1<-NaN;
+    have$D2<-NaN;
+    have$D3<-NaN;
+    have$D4<-NaN;
+    have$D5<-NaN;
+    have$D6<-NaN;
+    have$D7<-NaN;
+    have$D8<-NaN;
+    ncol(have);
+    for (i in 1:nrow(have));
+      for (j in 10:ncol(have));
+       (
+        have[i,j]<-have[i,j-8] - have[i,1];
+       );
+    have;
+    endsubmit;
+    import data=sd1.want r=have;
+    proc print data=sd1.want;
+    run;quit;
+    ");
+
+    /*----                                                                   ----*/
+    /*---- WITH MACRO ARRAYS                                                 ----*/
+    /*----                                                                   ----*/
+
+    proc datasets lib=sd1 nolist nodetails;delete want; run;quit;
+
+    %utl_submit_wps64x("
+    libname sd1 'd:/sd1';
+    %arraydelete(_ws);
+    %array(_ws,values=1-8);
+    proc r;
+    export data=sd1.have r=have;
+    submit;
+    %do_over(_ws,phrase=%str(
+        have$D? = NaN;));
+    ncol(have);
+    for (i in 1:nrow(have));
+      for (j in 10:ncol(have));
+       (
+        have[i,j]<-have[i,j-8] - have[i,1];
+       );
+    have;
+    endsubmit;
+    import data=sd1.want r=have;
+    proc print data=sd1.want;
+    run;quit;
+    ");
+
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /* The WPS System                                                                                                         */
+    /*                                                                                                                        */
+    /*   BS W1 W2 W3 W4 W5 W6 W7 W8 D1 D2  D3  D4  D5  D5  D7  D8  NA  NA                                                     */
+    /* 1 11 62 45 65 73 93 83 21 43 11  0 -51 -34 -54 -62 -82 -72 -10 -32                                                     */
+    /* 2 54 56 37 82 13 73 29 40 98 54  0  -2  17 -28  41 -19  25  14 -44                                                     */
+    /* 3 85 20 35 59 16 18 77 65 51 85  0  65  50  26  69  67   8  20  34                                                     */
+    /* 4 44 79 69 31 41 80 80 40 44 44  0 -35 -25  13   3 -36 -36   4   0                                                     */
+    /* 5 15 54 42 38 42 37 42 48 63 15  0 -39 -27 -23 -27 -22 -27 -33 -48                                                     */
+    /*                                                                                                                        */
+    /*                                                                                                                        */
+    /* BS    W1    W2    W3    W4    W5    W6    W7    W8    D1    D2    D3     D4     D5     D51    D7     D8     NA     NA1 */
+    /*                                                                                                                        */
+    /* 11    62    45    65    73    93    83    21    43    11     0    -51    -34    -54    -62    -82    -72    -10    -32 */
+    /* 54    56    37    82    13    73    29    40    98    54     0     -2     17    -28     41    -19     25     14    -44 */
+    /* 85    20    35    59    16    18    77    65    51    85     0     65     50     26     69     67      8     20     34 */
+    /* 44    79    69    31    41    80    80    40    44    44     0    -35    -25     13      3    -36    -36      4      0 */
+    /* 15    54    42    38    42    37    42    48    63    15     0    -39    -27    -23    -27    -22    -27    -33    -48 */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*____                                               _        _                  _
+    |___  | __      ___ __  ___   _ __   _ __ ___   __ _| |_ _ __(_)_  __  _ __ ___ (_)_  __
+       / /  \ \ /\ / / `_ \/ __| | `__| | `_ ` _ \ / _` | __| `__| \ \/ / | `_ ` _ \| \ \/ /
+      / /    \ V  V /| |_) \__ \ | |    | | | | | | (_| | |_| |  | |>  <  | | | | | | |>  <
+     /_/      \_/\_/ | .__/|___/ |_|    |_| |_| |_|\__,_|\__|_|  |_/_/\_\ |_| |_| |_|_/_/\_\
+                     |_|
+    */
+
+    proc datasets lib=sd1 nolist nodetails;delete want; run;quit;
+
+    %utl_submit_wps64x("
+    libname sd1 'd:/sd1';
+    proc r;
+    export data=sd1.have r=have;
+    submit;
+    bsr = function(df,vars_to_process){
+        m = as.matrix(df);
+        data.frame(
+             BASELINE = m[, 1],
+                 m[, 1] - m[, vars_to_process])};
+    difs<-bsr(have,colnames(have));
+    colnames(difs)<-c('D1','D2','D3','D4','D5','D5','D7','D8');
+    want<-as.data.frame(cbind(have,difs));
+    want;
+    endsubmit;
+    import data=sd1.want r=want;
+    proc print data=sd1.want;
+    run;quit;
+    ");
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /* The WPS System                                                                                                         */
+    /*                                                                                                                        */
+    /*   BS W1 W2 W3 W4 W5 W6 W7 W8 D1 D2  D3  D4  D5  D5  D7  D8  NA  NA                                                     */
+    /* 1 11 62 45 65 73 93 83 21 43 11  0 -51 -34 -54 -62 -82 -72 -10 -32                                                     */
+    /* 2 54 56 37 82 13 73 29 40 98 54  0  -2  17 -28  41 -19  25  14 -44                                                     */
+    /* 3 85 20 35 59 16 18 77 65 51 85  0  65  50  26  69  67   8  20  34                                                     */
+    /* 4 44 79 69 31 41 80 80 40 44 44  0 -35 -25  13   3 -36 -36   4   0                                                     */
+    /* 5 15 54 42 38 42 37 42 48 63 15  0 -39 -27 -23 -27 -22 -27 -33 -48                                                     */
+    /*                                                                                                                        */
+    /*                                                                                                                        */
+    /* BS    W1    W2    W3    W4    W5    W6    W7    W8    D1    D2    D3     D4     D5     D51    D7     D8     NA     NA1 */
+    /*                                                                                                                        */
+    /* 11    62    45    65    73    93    83    21    43    11     0    -51    -34    -54    -62    -82    -72    -10    -32 */
+    /* 54    56    37    82    13    73    29    40    98    54     0     -2     17    -28     41    -19     25     14    -44 */
+    /* 85    20    35    59    16    18    77    65    51    85     0     65     50     26     69     67      8     20     34 */
+    /* 44    79    69    31    41    80    80    40    44    44     0    -35    -25     13      3    -36    -36      4      0 */
+    /* 15    54    42    38    42    37    42    48    63    15     0    -39    -27    -23    -27    -22    -27    -33    -48 */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    %utlfkil(d:/xpt/want.xpt);
+
+    /*----                                                                   ----*/
+    /*----  elimiate issues with datastep and view with the same name        ----*/
+    /*----                                                                   ----*/
+
+    proc datasets lib=sd1 nolist mt=data mt=view nodetails;delete want; run;quit;
+    proc datasets lib=work nolist mt=data mt=view nodetails;delete want want_py_long_names; run;quit;
+
+    %utl_submit_wps64x("
+    options validvarname=any lrecl=32756;
+    libname sd1 'd:/sd1';
+    proc python;
+    export data=sd1.have  python=have;
+    submit;
+    import pyreadstat as ps;
+    from os import path;
+    import pandas as pd;
+    import numpy as np;
+    from pandasql import sqldf;
+    mysql = lambda q: sqldf(q, globals());
+    from pandasql import PandaSQL;
+    pdsql = PandaSQL(persist=True);
+    sqlite3conn = next(pdsql.conn.gen).connection.connection;
+    sqlite3conn.enable_load_extension(True);
+    sqlite3conn.load_extension('c:/temp/libsqlitefunctions.dll');
+    mysql = lambda q: sqldf(q, globals());
+    %arraydelete(_ws);
+    %array(_ws,values=1-8);
+    %do_over(_ws,phrase=%str(
+      have['D?'] = have['W?']-have['BS'];));
+    want=have;
+    print(want);
+     ps.write_xport(want,'d:\\xpt\\want.xpt',table_name='want',file_format_version=5
+     ,column_labels=['BS','W1','W2','W3','W4','W5','W5','W7','W8','D1','D2','D3','D4','D5','D5','D7','D8']);
+    endsubmit;
+    ");
+
+    /*--- handles long variable names by using the label to rename the variables  ----*/
+
+    libname xpt xport "d:/xpt/want.xpt";
+    proc contents data=xpt._all_;
+    run;quit;
+
+    data want_py_long_names;
+      %utl_rens(xpt.want) ;
+      set want;
+    run;quit;
+    libname xpt clear;
+
+    proc print data=want_py_long_names;
+    run;quit;
+
+    /**************************************************************************************************************************/
+    /*                                                                                                                        */
+    /*  The WPS PYTHON Procedure                                                                                              */
+    /*                                                                                                                        */
+    /*       BS    W1    W2    W3    W4    W5  ...    D3    D4    D5    D6    D7    D8                                        */
+    /*  0  11.0  62.0  45.0  65.0  73.0  93.0  ...  54.0  62.0  82.0  72.0  10.0  32.0                                        */
+    /*  1  54.0  56.0  37.0  82.0  13.0  73.0  ...  28.0 -41.0  19.0 -25.0 -14.0  44.0                                        */
+    /*  2  85.0  20.0  35.0  59.0  16.0  18.0  ... -26.0 -69.0 -67.0  -8.0 -20.0 -34.0                                        */
+    /*  3  44.0  79.0  69.0  31.0  41.0  80.0  ... -13.0  -3.0  36.0  36.0  -4.0   0.0                                        */
+    /*  4  15.0  54.0  42.0  38.0  42.0  37.0  ...  23.0  27.0  22.0  27.0  33.0  48.0                                        */
+    /*                                                                                                                        */
+    /*  WPS System                                                                                                            */
+    /*                                                                                                                        */
+    /*   BS    W1    W2    W3    W4    W5    W7    W8     D1     D2     D3     D4     D5     D7     D8                        */
+    /*                                                                                                                        */
+    /*   11    62    45    65    73    83    21    43     51     34     54     62     72     10     32                        */
+    /*   54    56    37    82    13    29    40    98      2    -17     28    -41    -25    -14     44                        */
+    /*   85    20    35    59    16    77    65    51    -65    -50    -26    -69     -8    -20    -34                        */
+    /*   44    79    69    31    41    80    40    44     35     25    -13     -3     36     -4      0                        */
+    /*   15    54    42    38    42    42    48    63     39     27     23     27     27     33     48                        */
+    /*                                                                                                                        */
+    /**************************************************************************************************************************/
+
+    /*              _
+      ___ _ __   __| |
+     / _ \ `_ \ / _` |
+    |  __/ | | | (_| |
+     \___|_| |_|\__,_|
+
+    */
